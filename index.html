@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>storage</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <form>
+        <fieldset>
+            <legend class="box-011">File Uploader</legend>
+            <div>
+                File : <input type="file" id="file">
+            </div>
+            <div>
+                <button type="button" id="send" class="button-061">send</button>
+            </div>
+        </fieldset>
+    </form>
+
+    <!-- データ出力場所 -->
+    <ul id="output" class="list-011"></ul>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getStorage, ref, uploadBytes, listAll, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
+
+        const firebaseConfig = {
+            // gitにあげる前に一旦消す
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const storage = getStorage(app);
+        const storageRef = ref(storage);
+
+        // ファイル一覧表示の追加
+        function getFileList() {
+            const output = document.getElementById('output');
+            output.innerHTML = ''; // 一覧をクリア
+
+            listAll(storageRef).then((res) => {
+                res.items.forEach((itemRef) => {
+                    getDownloadURL(itemRef).then((url) => {
+                        const li = document.createElement('li');
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.textContent = itemRef.name;
+                        a.target = '_blank';
+                        li.appendChild(a);
+
+                        const downloadButton = document.createElement('button');
+                        downloadButton.textContent = 'Download';
+                        downloadButton.addEventListener('click', () => {
+                            downloadFile(url, itemRef.name);
+                        });
+                        li.appendChild(downloadButton);
+
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Delete';
+                        deleteButton.addEventListener('click', () => {
+                            deleteFile(storageRef, itemRef);
+                        });
+                        li.appendChild(deleteButton);
+
+                        output.appendChild(li);
+                    }).catch((error) => {
+                        console.error('Error getting download URL:', error);
+                    });
+                });
+            }).catch((error) => {
+                console.error('Error listing files:', error);
+            });
+        }
+
+        // ファイルのダウンロード
+        function downloadFile(url, fileName) {
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.download = fileName;
+            link.click();
+        }
+
+        // 初回のファイル一覧表示
+        getFileList();
+
+        // ファイルアップロード処理の追加
+        const fileInput = document.getElementById('file');
+        const sendButton = document.getElementById('send');
+
+        sendButton.addEventListener('click', () => {
+            const file = fileInput.files[0];
+            if (file) {
+                const storageRef = ref(storage, file.name);
+                uploadBytes(storageRef, file).then((snapshot) => {
+                    console.log('File uploaded successfully!', snapshot);
+                    getFileList();
+                }).catch((error) => {
+                    console.error('Error uploading file:', error);
+                });
+            } else {
+                console.log('No file selected!');
+            }
+        });
+
+        // ファイルの削除
+        function deleteFile(storageRef, itemRef) {
+            deleteObject(ref(storageRef, itemRef.fullPath)).then(() => {
+                console.log('File deleted successfully.');
+                getFileList();
+            }).catch((error) => {
+                console.error('Error deleting file:', error);
+            });
+        }
+
+    </script>
+
+</html>
